@@ -202,15 +202,15 @@ const EnglishListeningApp: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700">
                   학습할 단어 범위 선택:
                 </label>
-                <div className="flex gap-3">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
                     <Input
                       type="number"
                       min="1"
                       max="600"
                       value={startNumber}
                       onChange={(e) => setStartNumber(e.target.value)}
-                      className="w-24 shadow-sm"
+                      className="w-full sm:w-24 shadow-sm"
                       placeholder="시작"
                     />
                     <span className="text-gray-500">~</span>
@@ -220,13 +220,13 @@ const EnglishListeningApp: React.FC = () => {
                       max="600"
                       value={endNumber}
                       onChange={(e) => setEndNumber(e.target.value)}
-                      className="w-24 shadow-sm"
+                      className="w-full sm:w-24 shadow-sm"
                       placeholder="끝"
                     />
                   </div>
                   <Button
                     onClick={generateRandomPlaylist}
-                    className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md flex items-center justify-center"
+                    className="w-full sm:w-auto sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md"
                   >
                     <Play size={18} className="mr-2" />
                     랜덤 생성
@@ -266,11 +266,11 @@ const EnglishListeningApp: React.FC = () => {
                   />
 
                   {/* 컨트롤 버튼 */}
-                  <div className="flex justify-center gap-4">
+                  <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
                     <Button
                       onClick={togglePlay}
                       size="lg"
-                      className={`w-16 h-16 rounded-full shadow-lg transition-transform hover:scale-105 ${
+                      className={`w-full sm:w-16 h-16 rounded-full shadow-lg transition-transform hover:scale-105 ${
                         isPlaying ? "bg-purple-600" : "bg-blue-600"
                       }`}
                     >
@@ -283,7 +283,7 @@ const EnglishListeningApp: React.FC = () => {
                     <Button
                       onClick={nextTrack}
                       size="lg"
-                      className="w-16 h-16 rounded-full shadow-lg transition-transform hover:scale-105 bg-blue-600"
+                      className="w-full sm:w-16 h-16 rounded-full shadow-lg transition-transform hover:scale-105 bg-blue-600"
                       disabled={currentTrack >= playlist.length - 1}
                     >
                       <SkipForward size={24} />
@@ -291,7 +291,7 @@ const EnglishListeningApp: React.FC = () => {
                     <Button
                       onClick={resetApp}
                       size="lg"
-                      className="w-16 h-16 rounded-full shadow-lg transition-transform hover:scale-105"
+                      className="w-full sm:w-16 h-16 rounded-full shadow-lg transition-transform hover:scale-105"
                       variant="outline"
                     >
                       <RefreshCw size={24} />
