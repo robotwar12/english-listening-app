@@ -1,7 +1,7 @@
 {
-    "name": "Your App Name",
-    "short_name": "App",
-    "description": "Your app description",
+    "name": "English Listening Practice",
+    "short_name": "EngListen",
+    "description": "Improve your English listening skills with interactive audio lessons",    ,
     "start_url": "/",
     "display": "standalone",
     "background_color": "#ffffff",
