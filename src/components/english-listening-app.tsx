@@ -226,10 +226,10 @@ const EnglishListeningApp: React.FC = () => {
                   </div>
                   <Button
                     onClick={generateRandomPlaylist}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                    className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md flex items-center justify-center"
                   >
                     <Play size={18} className="mr-2" />
-                    랜덤 재생목록 생성
+                    랜덤 생성
                   </Button>
                 </div>
               </div>
