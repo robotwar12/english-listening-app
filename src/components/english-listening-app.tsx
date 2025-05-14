@@ -139,7 +139,7 @@ const EnglishListeningApp: React.FC = () => {
     }
 
     // 레벨에 따른 파일 목록 선택
-    let selectedFiles: {
+    const selectedFiles: {
       filename: string;
       level: "beginner" | "intermediate";
     }[] = [];
