@@ -37,7 +37,7 @@ const wordDatabase: Record<
 > = {};
 
 // 초급 단어 추가 (1-600)
-Object.keys(beginnerWords).forEach((word, index) => {
+Object.keys(beginnerWords).forEach((word) => {
   wordDatabase[word] = {
     meaning: beginnerWords[word],
     level: "beginner",
@@ -45,7 +45,7 @@ Object.keys(beginnerWords).forEach((word, index) => {
 });
 
 // 중급 단어 추가 (1-600)
-Object.keys(intermediateWords).forEach((word, index) => {
+Object.keys(intermediateWords).forEach((word) => {
   wordDatabase[word] = {
     meaning: intermediateWords[word],
     level: "intermediate",
@@ -122,14 +122,14 @@ const EnglishListeningApp: React.FC = () => {
     }
 
     // 선택된 범위의 파일들만 필터링
-    let beginnerSelectedFiles = availableFiles.beginner.filter(
+    const beginnerSelectedFiles = availableFiles.beginner.filter(
       (filename) => {
         const fileNumber = parseInt(filename.split("_")[0]);
         return fileNumber >= start && fileNumber <= end;
       }
     );
 
-    let intermediateSelectedFiles =
+    const intermediateSelectedFiles =
       availableFiles.intermediate.filter((filename) => {
         const fileNumber = parseInt(filename.split("_")[0]);
         return fileNumber >= start && fileNumber <= end;
@@ -288,11 +288,6 @@ const EnglishListeningApp: React.FC = () => {
   };
 
   // 실제 파일 존재 여부 확인 (시뮬레이션 - 실제로는 서버에서 확인 필요)
-  const checkFileExists = (filePath: string): boolean => {
-    // 실제로는 서버에서 파일 존재 여부를 확인해야 합니다.
-    // 여기서는 간단한 시뮬레이션만 구현
-    return true;
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-4 md:p-6">
