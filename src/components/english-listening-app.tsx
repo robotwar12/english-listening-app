@@ -139,7 +139,7 @@ const EnglishListeningApp: React.FC = () => {
     }
 
     // 레벨에 따른 파일 목록 선택
-    const selectedFiles: {
+    let selectedFiles: {
       filename: string;
       level: "beginner" | "intermediate";
     }[] = [];
@@ -341,16 +341,18 @@ const EnglishListeningApp: React.FC = () => {
         <Card className="bg-white/80 backdrop-blur shadow-lg">
           <CardContent className="p-6">
             <div className="space-y-6">
-              {/* 레벨 선택 버튼 */}
+              {/* 레벨 선택 버튼 - 모바일 최적화 */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   학습 수준 선택:
                 </label>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col md:flex-row gap-2 w-full">
                   <Button
                     onClick={() => setLevelSelection("all")}
                     variant={level === "all" ? "default" : "outline"}
-                    className={level === "all" ? "bg-blue-600" : ""}
+                    className={`w-full md:w-auto ${
+                      level === "all" ? "bg-blue-600" : ""
+                    }`}
                   >
                     전체 단어
                   </Button>
@@ -359,9 +361,9 @@ const EnglishListeningApp: React.FC = () => {
                     variant={
                       level === "beginner" ? "default" : "outline"
                     }
-                    className={
+                    className={`w-full md:w-auto ${
                       level === "beginner" ? "bg-green-600" : ""
-                    }
+                    }`}
                   >
                     <BookOpen size={16} className="mr-2" />
                     초급 단어
@@ -371,9 +373,9 @@ const EnglishListeningApp: React.FC = () => {
                     variant={
                       level === "intermediate" ? "default" : "outline"
                     }
-                    className={
+                    className={`w-full md:w-auto ${
                       level === "intermediate" ? "bg-purple-600" : ""
-                    }
+                    }`}
                   >
                     <GraduationCap size={16} className="mr-2" />
                     중급 단어
@@ -381,7 +383,7 @@ const EnglishListeningApp: React.FC = () => {
                 </div>
               </div>
 
-              {/* 입력 섹션 */}
+              {/* 입력 섹션 - 모바일 최적화 */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   학습할 단어 범위 선택 (1-600):
@@ -593,12 +595,12 @@ const EnglishListeningApp: React.FC = () => {
                       {viewMode === "grid" ? (
                         <div>
                           <div className="flex justify-between items-start mb-2">
-                            <div className="flex items-center">
-                              <span className="text-lg font-medium text-gray-800">
+                            <div className="flex items-center flex-wrap">
+                              <span className="text-lg font-medium text-gray-800 mr-2">
                                 {file.word}
                               </span>
                               <span
-                                className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                   file.level === "beginner"
                                     ? "bg-green-100 text-green-800"
                                     : "bg-purple-100 text-purple-800"
@@ -609,7 +611,7 @@ const EnglishListeningApp: React.FC = () => {
                                   : "중급"}
                               </span>
                             </div>
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm text-gray-500 ml-2">
                               #{file.index}
                             </span>
                           </div>
@@ -621,7 +623,7 @@ const EnglishListeningApp: React.FC = () => {
                         </div>
                       ) : (
                         <>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm text-gray-500">
                               #{file.index}
                             </span>
@@ -629,7 +631,7 @@ const EnglishListeningApp: React.FC = () => {
                               {file.word}
                             </span>
                             <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                 file.level === "beginner"
                                   ? "bg-green-100 text-green-800"
                                   : "bg-purple-100 text-purple-800"
@@ -641,7 +643,7 @@ const EnglishListeningApp: React.FC = () => {
                             </span>
                           </div>
                           {showMeanings && (
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 mt-1">
                               {file.meaning}
                             </p>
                           )}
