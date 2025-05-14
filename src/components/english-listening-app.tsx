@@ -36,7 +36,7 @@ const wordDatabase: Record<
   { meaning: string; level: "beginner" | "intermediate" }
 > = {};
 
-// 초급 단어 추가 (1-600)
+// 초급 단어 추가
 Object.keys(beginnerWords).forEach((word) => {
   wordDatabase[word] = {
     meaning: beginnerWords[word],
@@ -44,7 +44,7 @@ Object.keys(beginnerWords).forEach((word) => {
   };
 });
 
-// 중급 단어 추가 (1-600)
+// 중급 단어 추가
 Object.keys(intermediateWords).forEach((word) => {
   wordDatabase[word] = {
     meaning: intermediateWords[word],
@@ -63,47 +63,64 @@ const EnglishListeningApp: React.FC = () => {
   const [level, setLevel] = useState<
     "all" | "beginner" | "intermediate"
   >("all");
-  const [availableFiles, setAvailableFiles] = useState<{
-    beginner: string[];
-    intermediate: string[];
-  }>({ beginner: [], intermediate: [] });
-  const [fileLoadError, setFileLoadError] = useState<boolean>(false);
+
+  // 초급 단어와 중급 단어 목록을 따로 저장
+  const [beginnerFiles, setBeginnerFiles] = useState<string[]>([]);
+  const [intermediateFiles, setIntermediateFiles] = useState<
+    string[]
+  >([]);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // 실제 디렉토리에서 파일 목록을 가져오는 대신 시뮬레이션
+  // 서버에서 파일 목록 가져오기
   useEffect(() => {
-    const generateMockFiles = () => {
-      const beginnerFiles: string[] = [];
-      const intermediateFiles: string[] = [];
+    const loadAvailableFiles = async () => {
+      try {
+        // 원래 API를 사용하여 모든 파일 가져오기
+        const response = await fetch("/api/files");
+        const files = await response.json();
 
-      // 초급 단어 (1-600)
-      Object.keys(beginnerWords).forEach((word, index) => {
-        const fileNumber = (index + 1).toString().padStart(3, "0");
-        beginnerFiles.push(`${fileNumber}_${word}.mp3`);
-      });
+        // 임시로 모든 파일을 초급으로 분류
+        const beginner: string[] = [];
+        beginner.push(...files);
 
-      // 중급 단어 (1-600)
-      Object.keys(intermediateWords).forEach((word, index) => {
-        const fileNumber = (index + 1).toString().padStart(3, "0");
-        intermediateFiles.push(`${fileNumber}_${word}.mp3`);
-      });
-
-      setAvailableFiles({
-        beginner: beginnerFiles,
-        intermediate: intermediateFiles,
-      });
+        console.log(`로드된 초급 파일: ${beginner.length}개`);
+        setBeginnerFiles(beginner);
+      } catch (error) {
+        console.error("Failed to load files:", error);
+        alert("파일 목록을 불러오는데 실패했습니다.");
+      }
     };
 
-    generateMockFiles();
+    loadAvailableFiles();
   }, []);
 
-  // 파일명에서 단어 추출
+  // 중급 단어 파일 목록 별도로 가져오기
+  useEffect(() => {
+    const loadIntermediateFiles = async () => {
+      try {
+        // audio2 폴더의 파일 목록을 가져오는 API 호출
+        const response = await fetch("/api/intermediate-files");
+        const files = await response.json();
+
+        console.log(`로드된 중급 파일: ${files.length}개`);
+        setIntermediateFiles(files);
+      } catch (error) {
+        console.error("Failed to load intermediate files:", error);
+        // 실패해도 계속 진행 (중급 단어가 없을 수 있음)
+      }
+    };
+
+    loadIntermediateFiles();
+  }, []);
+
+  // 파일명에서 단어 추출 (예: "406_hurt.mp3" -> "hurt")
   const extractWord = (filename: string): string => {
     const match = filename.match(/\d+_(.+)\.mp3$/);
     return match ? match[1] : "";
   };
 
-  // 재생 목록 생성
+  // 재생 목록 생성 (오디오 재생은 하지 않음)
   const generateRandomPlaylist = (): void => {
     const start = parseInt(startNumber);
     const end = parseInt(endNumber);
@@ -121,38 +138,40 @@ const EnglishListeningApp: React.FC = () => {
       return;
     }
 
-    // 선택된 범위의 파일들만 필터링
-    const beginnerSelectedFiles = availableFiles.beginner.filter(
-      (filename) => {
-        const fileNumber = parseInt(filename.split("_")[0]);
-        return fileNumber >= start && fileNumber <= end;
-      }
-    );
-
-    const intermediateSelectedFiles =
-      availableFiles.intermediate.filter((filename) => {
-        const fileNumber = parseInt(filename.split("_")[0]);
-        return fileNumber >= start && fileNumber <= end;
-      });
-
-    // 레벨에 따른 필터링
+    // 레벨에 따른 파일 목록 선택
     let selectedFiles: {
       filename: string;
       level: "beginner" | "intermediate";
     }[] = [];
 
+    // 초급 단어 선택 (level이 all 또는 beginner인 경우)
     if (level === "all" || level === "beginner") {
-      selectedFiles = selectedFiles.concat(
-        beginnerSelectedFiles.map((filename) => ({
+      const filteredBeginnerFiles = beginnerFiles.filter(
+        (filename) => {
+          const fileNumber = parseInt(filename.split("_")[0]);
+          return fileNumber >= start && fileNumber <= end;
+        }
+      );
+
+      selectedFiles.push(
+        ...filteredBeginnerFiles.map((filename) => ({
           filename,
           level: "beginner" as const,
         }))
       );
     }
 
+    // 중급 단어 선택 (level이 all 또는 intermediate인 경우)
     if (level === "all" || level === "intermediate") {
-      selectedFiles = selectedFiles.concat(
-        intermediateSelectedFiles.map((filename) => ({
+      const filteredIntermediateFiles = intermediateFiles.filter(
+        (filename) => {
+          const fileNumber = parseInt(filename.split("_")[0]);
+          return fileNumber >= start && fileNumber <= end;
+        }
+      );
+
+      selectedFiles.push(
+        ...filteredIntermediateFiles.map((filename) => ({
           filename,
           level: "intermediate" as const,
         }))
@@ -164,6 +183,8 @@ const EnglishListeningApp: React.FC = () => {
       return;
     }
 
+    console.log(`선택된 파일: ${selectedFiles.length}개`);
+
     const files: AudioFile[] = selectedFiles.map(
       ({ filename, level }) => {
         const index = parseInt(filename.split("_")[0]);
@@ -173,7 +194,7 @@ const EnglishListeningApp: React.FC = () => {
           level,
         };
 
-        // 파일 경로 설정: 초급은 /audio/, 중급은 /audio2/
+        // 중급 단어는 /audio2/ 폴더에서 가져옴
         const filePath =
           level === "beginner"
             ? `/audio/${filename}`
@@ -190,11 +211,14 @@ const EnglishListeningApp: React.FC = () => {
       }
     );
 
-    // 파일 로드 에러 상태 초기화
-    setFileLoadError(false);
+    // 셔플된 플레이리스트 생성 (오디오 재생 하지 않음)
     setPlaylist(_.shuffle(files));
     setCurrentTrack(0);
-    stopAndReset();
+
+    // 재생 중이라면 중지 (새 플레이리스트 생성 시)
+    if (isPlaying) {
+      stopAndReset();
+    }
   };
 
   // 초기화
@@ -203,7 +227,6 @@ const EnglishListeningApp: React.FC = () => {
     setEndNumber("600");
     setPlaylist([]);
     setCurrentTrack(0);
-    setFileLoadError(false);
     stopAndReset();
   };
 
@@ -223,23 +246,35 @@ const EnglishListeningApp: React.FC = () => {
     setLevel(selectedLevel);
   };
 
-  // 재생/일시정지 토글
+  // 재생/일시정지 토글 - 사용자가 명시적으로 재생 버튼을 누를 때만 호출됨
   const togglePlay = (): void => {
-    if (!playlist.length || fileLoadError) return;
+    if (!playlist.length) return;
 
     if (isPlaying) {
       audioRef.current?.pause();
+      setIsPlaying(false);
     } else {
-      // 오디오 재생 시도 후 에러 처리
+      // 재생 버튼을 누를 때만 오디오 재생 시작
       if (audioRef.current) {
-        audioRef.current.play().catch((error) => {
-          console.error("재생 에러:", error);
-          setFileLoadError(true);
-          setIsPlaying(false);
-        });
+        console.log(`재생 시도: ${playlist[currentTrack].filePath}`);
+
+        // 재생 전에 먼저 로드 확인
+        audioRef.current.load();
+
+        // TypeScript 오류 수정: 조건 검사 제거
+        audioRef.current
+          .play()
+          .then(() => {
+            // 재생 성공
+            setIsPlaying(true);
+          })
+          .catch((error) => {
+            console.error("오디오 재생 실패:", error);
+            alert(`오디오 재생 실패: ${error.message}`);
+            setIsPlaying(false);
+          });
       }
     }
-    setIsPlaying(!isPlaying);
   };
 
   // 다음 트랙으로 이동
@@ -247,17 +282,12 @@ const EnglishListeningApp: React.FC = () => {
     if (currentTrack < playlist.length - 1) {
       stopAndReset();
       setCurrentTrack((prev) => prev + 1);
-      setFileLoadError(false); // 새 트랙으로 이동하면 에러 상태 초기화
     }
   };
 
   // 오디오 종료 시 처리
   const handleEnded = (): void => {
     stopAndReset();
-    // 자동으로 다음 트랙으로 이동 (선택 사항)
-    if (currentTrack < playlist.length - 1) {
-      setCurrentTrack((prev) => prev + 1);
-    }
   };
 
   // 트랙 선택 및 재생 처리
@@ -269,7 +299,6 @@ const EnglishListeningApp: React.FC = () => {
       // 다른 트랙을 선택한 경우
       stopAndReset();
       setCurrentTrack(index);
-      setFileLoadError(false); // 새 트랙으로 이동하면 에러 상태 초기화
     }
   };
 
@@ -277,17 +306,18 @@ const EnglishListeningApp: React.FC = () => {
   const handleError = (
     e: React.SyntheticEvent<HTMLAudioElement, Event>
   ) => {
-    console.error("오디오 로딩 에러:", e);
-    setFileLoadError(true);
-    // 팝업 대신 상태 업데이트로 처리
+    const audioElement = e.target as HTMLAudioElement;
+    console.error(
+      "오디오 파일을 로드하는데 문제가 발생했습니다.",
+      audioElement.error
+    );
+    alert(
+      `오디오 파일 로드 오류: ${
+        audioElement.error?.message || "알 수 없는 오류"
+      }`
+    );
+    setIsPlaying(false);
   };
-
-  // 오디오 로드 성공 처리
-  const handleCanPlay = () => {
-    setFileLoadError(false);
-  };
-
-  // 실제 파일 존재 여부 확인 (시뮬레이션 - 실제로는 서버에서 확인 필요)
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-4 md:p-6">
@@ -388,16 +418,16 @@ const EnglishListeningApp: React.FC = () => {
                 </div>
               </div>
 
+              {/* 파일 정보 확인 */}
+              <div className="text-xs text-gray-500">
+                <p>초급 단어: {beginnerFiles.length}개 로드됨</p>
+                <p>중급 단어: {intermediateFiles.length}개 로드됨</p>
+              </div>
+
               {/* 현재 재생 중인 단어 섹션 */}
               {playlist.length > 0 && (
                 <div className="space-y-6">
                   <div className="text-center p-6 bg-blue-50 rounded-lg">
-                    {fileLoadError && (
-                      <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-700 text-sm">
-                        오디오 파일을 로드할 수 없습니다. 오디오 재생
-                        없이 단어 학습은 계속할 수 있습니다.
-                      </div>
-                    )}
                     <p className="text-sm text-blue-600 font-medium mb-3">
                       {currentTrack + 1} / {playlist.length}
                     </p>
@@ -436,21 +466,21 @@ const EnglishListeningApp: React.FC = () => {
                         : {playlist[currentTrack].filename}
                       </span>
                     </div>
+                    {/* 파일 경로 디버깅 */}
+                    <div className="mt-1 text-xs text-gray-400">
+                      {playlist[currentTrack].filePath}
+                    </div>
                   </div>
 
-                  {/* preload="none"으로 설정하여 페이지 로드 시 자동 로드 방지 */}
+                  {/* preload="none" 추가하여 자동 로드 방지 */}
                   <audio
                     ref={audioRef}
                     src={playlist[currentTrack].filePath}
                     onEnded={handleEnded}
                     onError={handleError}
-                    onCanPlay={handleCanPlay}
                     preload="none"
                     className="hidden"
-                  >
-                    {/* 오디오가 지원되지 않는 브라우저를 위한 대체 텍스트 */}
-                    Your browser does not support the audio element.
-                  </audio>
+                  />
 
                   {/* 컨트롤 버튼 */}
                   <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
@@ -459,12 +489,7 @@ const EnglishListeningApp: React.FC = () => {
                       size="lg"
                       className={`w-full sm:w-16 h-16 rounded-full shadow-lg transition-transform hover:scale-105 ${
                         isPlaying ? "bg-purple-600" : "bg-blue-600"
-                      } ${
-                        fileLoadError
-                          ? "opacity-50 cursor-not-allowed"
-                          : ""
                       }`}
-                      disabled={fileLoadError}
                     >
                       {isPlaying ? (
                         <Pause size={24} />
