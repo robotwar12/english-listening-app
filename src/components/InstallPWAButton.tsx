@@ -1,41 +1,51 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+}
 
 export default function InstallPWAButton() {
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [installPrompt, setInstallPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
-    const handler = (e: any) => {
-      e.preventDefault();
-      setInstallPrompt(e);
+    const handler = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
     };
 
     window.addEventListener("beforeinstallprompt", handler);
-    return () =>
+
+    return () => {
       window.removeEventListener("beforeinstallprompt", handler);
+    };
   }, []);
 
-  const handleInstallClick = () => {
-    if (installPrompt) {
-      installPrompt.prompt();
-      installPrompt.userChoice.then((choiceResult: any) => {
-        if (choiceResult.outcome === "accepted") {
-          console.log("사용자가 앱 설치");
-        }
-        setInstallPrompt(null);
-      });
+  const handleInstallClick = async () => {
+    if (!installPrompt) return;
+
+    await installPrompt.prompt();
+    const choiceResult = await installPrompt.userChoice;
+
+    if (choiceResult.outcome === "accepted") {
+      console.log("사용자가 앱 설치를 수락했습니다.");
     }
+
+    setInstallPrompt(null);
   };
 
-  // 설치 가능한 상태일 때만 버튼 표시
-  if (!installPrompt) return null;
+  if (!installPrompt) {
+    return null;
+  }
 
   return (
     <button
+      type="button"
       onClick={handleInstallClick}
-      className="bg-blue-500 text-white px-4 py-2 rounded"
+      className="fixed bottom-4 right-4 z-50 rounded bg-blue-500 px-4 py-2 text-white shadow-lg hover:bg-blue-600"
     >
       앱 설치
     </button>

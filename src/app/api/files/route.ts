@@ -4,7 +4,7 @@ import path from 'path';
 
 export async function GET() {
   try {
-    const audioDir = path.join(process.cwd(), 'public', 'audio');
+    const audioDir = path.join(process.cwd(), 'public', 'audio3');
     const files = fs.readdirSync(audioDir)
       .filter(file => file.endsWith('.mp3'))
       .sort((a, b) => {

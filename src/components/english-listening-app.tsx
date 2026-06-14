@@ -1,23 +1,22 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  Play,
-  Pause,
-  SkipForward,
-  RefreshCw,
+  BookOpen,
   Eye,
   EyeOff,
-  Volume2,
-  List,
   Grid,
-  BookOpen,
-  GraduationCap,
+  List,
+  Pause,
+  Play,
+  RefreshCw,
+  SkipForward,
+  Volume2,
 } from "lucide-react";
-import _ from "lodash";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 interface AudioFile {
   filename: string;
@@ -25,259 +24,168 @@ interface AudioFile {
   index: number;
   word: string;
   meaning: string;
-  level: "beginner" | "intermediate";
 }
 
-// Import WordDatabases
-import { beginnerWords, intermediateWords } from "./wordDatabase";
+type WordDatabase = Record<string, string>;
 
-const wordDatabase: Record<
-  string,
-  { meaning: string; level: "beginner" | "intermediate" }
-> = {};
+const MAX_WORD_COUNT = 750;
 
-// 초급 단어 추가
-Object.keys(beginnerWords).forEach((word) => {
-  wordDatabase[word] = {
-    meaning: beginnerWords[word],
-    level: "beginner",
-  };
-});
+const extractWord = (filename: string): string => {
+  const match = filename.match(/^\d+_(.+)\.mp3$/);
+  return match ? match[1] : "";
+};
 
-// 중급 단어 추가
-Object.keys(intermediateWords).forEach((word) => {
-  wordDatabase[word] = {
-    meaning: intermediateWords[word],
-    level: "intermediate",
-  };
-});
+const shuffleFiles = <T,>(items: T[]): T[] => {
+  const shuffled = [...items];
+
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  return shuffled;
+};
 
 const EnglishListeningApp: React.FC = () => {
   const [startNumber, setStartNumber] = useState<string>("1");
-  const [endNumber, setEndNumber] = useState<string>("600");
+  const [endNumber, setEndNumber] = useState<string>(String(MAX_WORD_COUNT));
+  const [availableFiles, setAvailableFiles] = useState<string[]>([]);
+  const [wordDatabase, setWordDatabase] = useState<WordDatabase>({});
   const [playlist, setPlaylist] = useState<AudioFile[]>([]);
   const [currentTrack, setCurrentTrack] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [showMeanings, setShowMeanings] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [level, setLevel] = useState<
-    "all" | "beginner" | "intermediate"
-  >("all");
-
-  // 초급 단어와 중급 단어 목록을 따로 저장
-  const [beginnerFiles, setBeginnerFiles] = useState<string[]>([]);
-  const [intermediateFiles, setIntermediateFiles] = useState<
-    string[]
-  >([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // 서버에서 파일 목록 가져오기
   useEffect(() => {
-    const loadAvailableFiles = async () => {
+    const loadAppData = async () => {
       try {
-        // 원래 API를 사용하여 모든 파일 가져오기
-        const response = await fetch("/api/files");
-        const files = await response.json();
+        setIsLoading(true);
 
-        // 임시로 모든 파일을 초급으로 분류
-        const beginner: string[] = [];
-        beginner.push(...files);
+        const [filesResponse, wordsResponse] = await Promise.all([
+          fetch("/api/files"),
+          fetch("/voca3200data.json"),
+        ]);
 
-        console.log(`로드된 초급 파일: ${beginner.length}개`);
-        setBeginnerFiles(beginner);
+        if (!filesResponse.ok) {
+          throw new Error("오디오 파일 목록을 불러오지 못했습니다.");
+        }
+
+        if (!wordsResponse.ok) {
+          throw new Error("단어 뜻 데이터를 불러오지 못했습니다.");
+        }
+
+        const files = (await filesResponse.json()) as string[];
+        const words = (await wordsResponse.json()) as WordDatabase;
+
+        setAvailableFiles(files);
+        setWordDatabase(words);
       } catch (error) {
-        console.error("Failed to load files:", error);
-        alert("파일 목록을 불러오는데 실패했습니다.");
+        console.error("Failed to load app data:", error);
+        alert(
+          error instanceof Error
+            ? error.message
+            : "앱 데이터를 불러오는데 실패했습니다."
+        );
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    loadAvailableFiles();
+    loadAppData();
   }, []);
 
-  // 중급 단어 파일 목록 별도로 가져오기
-  useEffect(() => {
-    const loadIntermediateFiles = async () => {
-      try {
-        // audio2 폴더의 파일 목록을 가져오는 API 호출
-        const response = await fetch("/api/intermediate-files");
-        const files = await response.json();
-
-        console.log(`로드된 중급 파일: ${files.length}개`);
-        setIntermediateFiles(files);
-      } catch (error) {
-        console.error("Failed to load intermediate files:", error);
-        // 실패해도 계속 진행 (중급 단어가 없을 수 있음)
-      }
-    };
-
-    loadIntermediateFiles();
-  }, []);
-
-  // 파일명에서 단어 추출 (예: "406_hurt.mp3" -> "hurt")
-  const extractWord = (filename: string): string => {
-    const match = filename.match(/\d+_(.+)\.mp3$/);
-    return match ? match[1] : "";
-  };
-
-  // 재생 목록 생성 (오디오 재생은 하지 않음)
-  const generateRandomPlaylist = (): void => {
-    const start = parseInt(startNumber);
-    const end = parseInt(endNumber);
-
-    if (
-      isNaN(start) ||
-      isNaN(end) ||
-      start < 1 ||
-      end > 600 ||
-      start > end
-    ) {
-      alert(
-        "시작 번호는 1-600 사이, 끝 번호는 시작 번호보다 크고 600 이하여야 합니다."
-      );
-      return;
-    }
-
-    // 레벨에 따른 파일 목록 선택
-    const selectedFiles: {
-      filename: string;
-      level: "beginner" | "intermediate";
-    }[] = [];
-
-    // 초급 단어 선택 (level이 all 또는 beginner인 경우)
-    if (level === "all" || level === "beginner") {
-      const filteredBeginnerFiles = beginnerFiles.filter(
-        (filename) => {
-          const fileNumber = parseInt(filename.split("_")[0]);
-          return fileNumber >= start && fileNumber <= end;
-        }
-      );
-
-      selectedFiles.push(
-        ...filteredBeginnerFiles.map((filename) => ({
-          filename,
-          level: "beginner" as const,
-        }))
-      );
-    }
-
-    // 중급 단어 선택 (level이 all 또는 intermediate인 경우)
-    if (level === "all" || level === "intermediate") {
-      const filteredIntermediateFiles = intermediateFiles.filter(
-        (filename) => {
-          const fileNumber = parseInt(filename.split("_")[0]);
-          return fileNumber >= start && fileNumber <= end;
-        }
-      );
-
-      selectedFiles.push(
-        ...filteredIntermediateFiles.map((filename) => ({
-          filename,
-          level: "intermediate" as const,
-        }))
-      );
-    }
-
-    if (selectedFiles.length === 0) {
-      alert("선택한 범위에 사용 가능한 파일이 없습니다.");
-      return;
-    }
-
-    console.log(`선택된 파일: ${selectedFiles.length}개`);
-
-    const files: AudioFile[] = selectedFiles.map(
-      ({ filename, level }) => {
-        const index = parseInt(filename.split("_")[0]);
-        const word = extractWord(filename);
-        const wordInfo = wordDatabase[word.toLowerCase()] || {
-          meaning: "의미 데이터 없음",
-          level,
-        };
-
-        // 중급 단어는 /audio2/ 폴더에서 가져옴
-        const filePath =
-          level === "beginner"
-            ? `/audio/${filename}`
-            : `/audio2/${filename}`;
-
-        return {
-          filename,
-          filePath,
-          index,
-          word,
-          meaning: wordInfo.meaning,
-          level,
-        };
-      }
-    );
-
-    // 셔플된 플레이리스트 생성 (오디오 재생 하지 않음)
-    setPlaylist(_.shuffle(files));
-    setCurrentTrack(0);
-
-    // 재생 중이라면 중지 (새 플레이리스트 생성 시)
-    if (isPlaying) {
-      stopAndReset();
-    }
-  };
-
-  // 초기화
-  const resetApp = (): void => {
-    setStartNumber("1");
-    setEndNumber("600");
-    setPlaylist([]);
-    setCurrentTrack(0);
-    stopAndReset();
-  };
-
-  // 재생 중지 및 초기화
   const stopAndReset = (): void => {
     setIsPlaying(false);
+
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
   };
 
-  // 레벨 선택
-  const setLevelSelection = (
-    selectedLevel: "all" | "beginner" | "intermediate"
-  ) => {
-    setLevel(selectedLevel);
+  const generateRandomPlaylist = (): void => {
+    const start = Number.parseInt(startNumber, 10);
+    const end = Number.parseInt(endNumber, 10);
+
+    if (
+      Number.isNaN(start) ||
+      Number.isNaN(end) ||
+      start < 1 ||
+      end > MAX_WORD_COUNT ||
+      start > end
+    ) {
+      alert(
+        `시작 번호는 1-${MAX_WORD_COUNT} 사이, 끝 번호는 시작 번호보다 크고 ${MAX_WORD_COUNT} 이하여야 합니다.`
+      );
+      return;
+    }
+
+    const filteredFiles = availableFiles.filter((filename) => {
+      const fileNumber = Number.parseInt(filename.split("_")[0], 10);
+      return fileNumber >= start && fileNumber <= end;
+    });
+
+    if (filteredFiles.length === 0) {
+      alert("선택한 범위에 사용 가능한 파일이 없습니다.");
+      return;
+    }
+
+    const files: AudioFile[] = filteredFiles.map((filename) => {
+      const index = Number.parseInt(filename.split("_")[0], 10);
+      const word = extractWord(filename);
+      const meaning = wordDatabase[word.toLowerCase()] ?? "의미 데이터 없음";
+
+      return {
+        filename,
+        filePath: `/audio3/${filename}`,
+        index,
+        word,
+        meaning,
+      };
+    });
+
+    setPlaylist(shuffleFiles(files));
+    setCurrentTrack(0);
+
+    if (isPlaying) {
+      stopAndReset();
+    }
   };
 
-  // 재생/일시정지 토글 - 사용자가 명시적으로 재생 버튼을 누를 때만 호출됨
+  const resetApp = (): void => {
+    setStartNumber("1");
+    setEndNumber(String(MAX_WORD_COUNT));
+    setPlaylist([]);
+    setCurrentTrack(0);
+    stopAndReset();
+  };
+
   const togglePlay = (): void => {
     if (!playlist.length) return;
 
     if (isPlaying) {
       audioRef.current?.pause();
       setIsPlaying(false);
-    } else {
-      // 재생 버튼을 누를 때만 오디오 재생 시작
-      if (audioRef.current) {
-        console.log(`재생 시도: ${playlist[currentTrack].filePath}`);
+      return;
+    }
 
-        // 재생 전에 먼저 로드 확인
-        audioRef.current.load();
-
-        // TypeScript 오류 수정: 조건 검사 제거
-        audioRef.current
-          .play()
-          .then(() => {
-            // 재생 성공
-            setIsPlaying(true);
-          })
-          .catch((error) => {
-            console.error("오디오 재생 실패:", error);
-            alert(`오디오 재생 실패: ${error.message}`);
-            setIsPlaying(false);
-          });
-      }
+    if (audioRef.current) {
+      audioRef.current.load();
+      audioRef.current
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch((error) => {
+          console.error("오디오 재생 실패:", error);
+          alert(`오디오 재생 실패: ${error.message}`);
+          setIsPlaying(false);
+        });
     }
   };
 
-  // 다음 트랙으로 이동
   const nextTrack = (): void => {
     if (currentTrack < playlist.length - 1) {
       stopAndReset();
@@ -285,27 +193,21 @@ const EnglishListeningApp: React.FC = () => {
     }
   };
 
-  // 오디오 종료 시 처리
   const handleEnded = (): void => {
     stopAndReset();
   };
 
-  // 트랙 선택 및 재생 처리
   const selectTrack = (index: number): void => {
     if (index === currentTrack) {
-      // 현재 트랙을 다시 클릭한 경우 재생/일시정지 토글
       togglePlay();
-    } else {
-      // 다른 트랙을 선택한 경우
-      stopAndReset();
-      setCurrentTrack(index);
+      return;
     }
+
+    stopAndReset();
+    setCurrentTrack(index);
   };
 
-  // 오디오 로딩 에러 처리
-  const handleError = (
-    e: React.SyntheticEvent<HTMLAudioElement, Event>
-  ) => {
+  const handleError = (e: React.SyntheticEvent<HTMLAudioElement, Event>) => {
     const audioElement = e.target as HTMLAudioElement;
     console.error(
       "오디오 파일을 로드하는데 문제가 발생했습니다.",
@@ -319,100 +221,69 @@ const EnglishListeningApp: React.FC = () => {
     setIsPlaying(false);
   };
 
+  const currentFile = playlist[currentTrack];
+  const wordCount = Object.keys(wordDatabase).length;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-4 md:p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* 헤더 섹션 */}
-        <div className="text-center mb-8">
-          <div className="inline-block mb-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-r from-blue-500 to-blue-400 flex items-center justify-center shadow-lg mb-3 mx-auto">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <div className="mb-8 text-center">
+          <div className="mb-4 inline-block">
+            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-500 to-blue-400 shadow-lg">
               <Volume2 size={32} className="text-white" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent mb-3">
+          <h1 className="mb-3 bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-4xl font-bold text-transparent">
             English Listening Practice
           </h1>
-          <p className="text-gray-600 text-lg">
-            Listen and learn English words with pronunciation
+          <p className="text-lg text-gray-600">
+            VOCA 3200 단어를 랜덤으로 섞어 듣고 뜻을 확인하세요.
           </p>
         </div>
 
-        {/* 컨트롤 카드 */}
-        <Card className="bg-white/80 backdrop-blur shadow-lg">
+        <Card className="bg-white/80 shadow-lg backdrop-blur">
           <CardContent className="p-6">
             <div className="space-y-6">
-              {/* 레벨 선택 버튼 - 모바일 최적화 */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
-                  학습 수준 선택:
+                  학습 데이터
                 </label>
-                <div className="flex flex-col md:flex-row gap-2 w-full">
-                  <Button
-                    onClick={() => setLevelSelection("all")}
-                    variant={level === "all" ? "default" : "outline"}
-                    className={`w-full md:w-auto ${
-                      level === "all" ? "bg-blue-600" : ""
-                    }`}
-                  >
-                    전체 단어
-                  </Button>
-                  <Button
-                    onClick={() => setLevelSelection("beginner")}
-                    variant={
-                      level === "beginner" ? "default" : "outline"
-                    }
-                    className={`w-full md:w-auto ${
-                      level === "beginner" ? "bg-green-600" : ""
-                    }`}
-                  >
-                    <BookOpen size={16} className="mr-2" />
-                    초급 단어
-                  </Button>
-                  <Button
-                    onClick={() => setLevelSelection("intermediate")}
-                    variant={
-                      level === "intermediate" ? "default" : "outline"
-                    }
-                    className={`w-full md:w-auto ${
-                      level === "intermediate" ? "bg-purple-600" : ""
-                    }`}
-                  >
-                    <GraduationCap size={16} className="mr-2" />
-                    중급 단어
-                  </Button>
+                <div className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
+                  <BookOpen size={16} className="mr-2" />
+                  VOCA 3200 단어
                 </div>
               </div>
 
-              {/* 입력 섹션 - 모바일 최적화 */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
-                  학습할 단어 범위 선택 (1-600):
+                  학습할 단어 범위 선택 (1-{MAX_WORD_COUNT})
                 </label>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <div className="flex w-full items-center gap-2 sm:w-auto">
                     <Input
                       type="number"
                       min="1"
-                      max="600"
+                      max={MAX_WORD_COUNT}
                       value={startNumber}
                       onChange={(e) => setStartNumber(e.target.value)}
-                      className="w-full sm:w-24 shadow-sm"
+                      className="w-full shadow-sm sm:w-24"
                       placeholder="시작"
                     />
                     <span className="text-gray-500">~</span>
                     <Input
                       type="number"
                       min="1"
-                      max="600"
+                      max={MAX_WORD_COUNT}
                       value={endNumber}
                       onChange={(e) => setEndNumber(e.target.value)}
-                      className="w-full sm:w-24 shadow-sm"
+                      className="w-full shadow-sm sm:w-24"
                       placeholder="끝"
                     />
                   </div>
                   <Button
                     onClick={generateRandomPlaylist}
-                    className="w-full sm:w-auto sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                    className="w-full bg-blue-600 text-white shadow-md hover:bg-blue-700 sm:flex-1"
+                    disabled={isLoading || availableFiles.length === 0}
                   >
                     <Play size={18} className="mr-2" />
                     랜덤 생성
@@ -420,89 +291,68 @@ const EnglishListeningApp: React.FC = () => {
                 </div>
               </div>
 
-              {/* 파일 정보 확인 */}
               <div className="text-xs text-gray-500">
-                <p>초급 단어: {beginnerFiles.length}개 로드됨</p>
-                <p>중급 단어: {intermediateFiles.length}개 로드됨</p>
+                <p>오디오 파일: {availableFiles.length}개 로드됨</p>
+                <p>뜻 데이터: {wordCount}개 로드됨</p>
+                {isLoading && <p>데이터를 불러오는 중입니다...</p>}
               </div>
 
-              {/* 현재 재생 중인 단어 섹션 */}
-              {playlist.length > 0 && (
+              {playlist.length > 0 && currentFile && (
                 <div className="space-y-6">
-                  <div className="text-center p-6 bg-blue-50 rounded-lg">
-                    <p className="text-sm text-blue-600 font-medium mb-3">
+                  <div className="rounded-lg bg-blue-50 p-6 text-center">
+                    <p className="mb-3 text-sm font-medium text-blue-600">
                       {currentTrack + 1} / {playlist.length}
                     </p>
-                    <div className="flex justify-center items-center gap-2 mb-2">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          playlist[currentTrack].level === "beginner"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-purple-100 text-purple-800"
-                        }`}
-                      >
-                        {playlist[currentTrack].level === "beginner"
-                          ? "초급"
-                          : "중급"}
+                    <div className="mb-2 flex items-center justify-center gap-2">
+                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                        VOCA 3200
                       </span>
                       <span className="text-xs text-gray-500">
-                        #{playlist[currentTrack].index}
+                        #{currentFile.index}
                       </span>
                     </div>
                     <div className="space-y-2">
                       <p className="text-3xl font-bold text-blue-800">
-                        {playlist[currentTrack].word}
+                        {currentFile.word}
                       </p>
                       {showMeanings && (
                         <p className="text-xl text-gray-600">
-                          {playlist[currentTrack].meaning}
+                          {currentFile.meaning}
                         </p>
                       )}
                     </div>
                     <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500">
                       <Volume2 size={16} />
-                      <span>
-                        {playlist[currentTrack].level === "beginner"
-                          ? "초급"
-                          : "중급"}
-                        : {playlist[currentTrack].filename}
-                      </span>
+                      <span>{currentFile.filename}</span>
                     </div>
-                    {/* 파일 경로 디버깅 */}
                     <div className="mt-1 text-xs text-gray-400">
-                      {playlist[currentTrack].filePath}
+                      {currentFile.filePath}
                     </div>
                   </div>
 
-                  {/* preload="none" 추가하여 자동 로드 방지 */}
                   <audio
                     ref={audioRef}
-                    src={playlist[currentTrack].filePath}
+                    src={currentFile.filePath}
                     onEnded={handleEnded}
                     onError={handleError}
                     preload="none"
                     className="hidden"
                   />
 
-                  {/* 컨트롤 버튼 */}
-                  <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+                  <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                     <Button
                       onClick={togglePlay}
                       size="lg"
-                      className={`w-full sm:w-16 h-16 rounded-full shadow-lg transition-transform hover:scale-105 ${
+                      className={`h-16 w-full rounded-full shadow-lg transition-transform hover:scale-105 sm:w-16 ${
                         isPlaying ? "bg-purple-600" : "bg-blue-600"
                       }`}
                     >
-                      {isPlaying ? (
-                        <Pause size={24} />
-                      ) : (
-                        <Play size={24} />
-                      )}
+                      {isPlaying ? <Pause size={24} /> : <Play size={24} />}
                     </Button>
                     <Button
                       onClick={nextTrack}
                       size="lg"
-                      className="w-full sm:w-16 h-16 rounded-full shadow-lg transition-transform hover:scale-105 bg-blue-600"
+                      className="h-16 w-full rounded-full bg-blue-600 shadow-lg transition-transform hover:scale-105 sm:w-16"
                       disabled={currentTrack >= playlist.length - 1}
                     >
                       <SkipForward size={24} />
@@ -510,7 +360,7 @@ const EnglishListeningApp: React.FC = () => {
                     <Button
                       onClick={resetApp}
                       size="lg"
-                      className="w-full sm:w-16 h-16 rounded-full shadow-lg transition-transform hover:scale-105"
+                      className="h-16 w-full rounded-full shadow-lg transition-transform hover:scale-105 sm:w-16"
                       variant="outline"
                     >
                       <RefreshCw size={24} />
@@ -522,32 +372,24 @@ const EnglishListeningApp: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* 단어 목록 카드 */}
         {playlist.length > 0 && (
-          <Card className="bg-white/80 backdrop-blur shadow-lg">
+          <Card className="bg-white/80 shadow-lg backdrop-blur">
             <CardContent className="p-6">
               <div className="space-y-6">
-                {/* 단어 목록 헤더 */}
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <h3 className="text-xl font-semibold text-gray-800">
                     학습 단어 목록
                   </h3>
                   <div className="flex gap-2">
                     <Button
                       onClick={() =>
-                        setViewMode(
-                          viewMode === "grid" ? "list" : "grid"
-                        )
+                        setViewMode(viewMode === "grid" ? "list" : "grid")
                       }
                       variant="outline"
                       size="sm"
                       className="text-gray-600"
                     >
-                      {viewMode === "grid" ? (
-                        <List size={16} />
-                      ) : (
-                        <Grid size={16} />
-                      )}
+                      {viewMode === "grid" ? <List size={16} /> : <Grid size={16} />}
                     </Button>
                     <Button
                       onClick={() => setShowMeanings(!showMeanings)}
@@ -555,99 +397,65 @@ const EnglishListeningApp: React.FC = () => {
                       size="sm"
                       className="text-gray-600"
                     >
-                      {showMeanings ? (
-                        <EyeOff size={16} />
-                      ) : (
-                        <Eye size={16} />
-                      )}
+                      {showMeanings ? <EyeOff size={16} /> : <Eye size={16} />}
                     </Button>
                   </div>
                 </div>
 
-                {/* 단어 목록 그리드/리스트 */}
                 <div
-                  className={`
-                  ${
+                  className={
                     viewMode === "grid"
-                      ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                      ? "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
                       : "space-y-2"
                   }
-                `}
                 >
                   {playlist.map((file, index) => (
                     <div
-                      key={file.index + file.level + index}
+                      key={`${file.index}-${file.word}-${index}`}
                       onClick={() => selectTrack(index)}
-                      className={`
-                        ${
-                          viewMode === "grid"
-                            ? "p-4 rounded-lg border transition-all duration-200"
-                            : "p-3 rounded-lg border flex justify-between items-center"
-                        }
-                        ${
-                          index === currentTrack
-                            ? "bg-blue-50 border-blue-300 shadow-md"
-                            : "border-gray-200 hover:border-blue-200 hover:shadow-sm"
-                        }
-                        cursor-pointer hover:bg-blue-50
-                      `}
+                      className={`cursor-pointer border hover:bg-blue-50 ${
+                        viewMode === "grid"
+                          ? "rounded-lg p-4 transition-all duration-200"
+                          : "rounded-lg p-3"
+                      } ${
+                        index === currentTrack
+                          ? "border-blue-300 bg-blue-50 shadow-md"
+                          : "border-gray-200 hover:border-blue-200 hover:shadow-sm"
+                      }`}
                     >
                       {viewMode === "grid" ? (
                         <div>
-                          <div className="flex justify-between items-start mb-2">
-                            <div className="flex items-center flex-wrap">
-                              <span className="text-lg font-medium text-gray-800 mr-2">
+                          <div className="mb-2 flex items-start justify-between">
+                            <div className="flex flex-wrap items-center">
+                              <span className="mr-2 text-lg font-medium text-gray-800">
                                 {file.word}
                               </span>
-                              <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                  file.level === "beginner"
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-purple-100 text-purple-800"
-                                }`}
-                              >
-                                {file.level === "beginner"
-                                  ? "초급"
-                                  : "중급"}
+                              <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                                VOCA 3200
                               </span>
                             </div>
-                            <span className="text-sm text-gray-500 ml-2">
+                            <span className="ml-2 text-sm text-gray-500">
                               #{file.index}
                             </span>
                           </div>
                           {showMeanings && (
-                            <p className="text-gray-600">
-                              {file.meaning}
-                            </p>
+                            <p className="text-gray-600">{file.meaning}</p>
                           )}
                         </div>
                       ) : (
-                        <>
-                          <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="text-sm text-gray-500">
                               #{file.index}
                             </span>
                             <span className="text-lg font-medium text-gray-800">
                               {file.word}
                             </span>
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                file.level === "beginner"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-purple-100 text-purple-800"
-                              }`}
-                            >
-                              {file.level === "beginner"
-                                ? "초급"
-                                : "중급"}
-                            </span>
                           </div>
                           {showMeanings && (
-                            <p className="text-gray-600 mt-1">
-                              {file.meaning}
-                            </p>
+                            <p className="text-gray-600">{file.meaning}</p>
                           )}
-                        </>
+                        </div>
                       )}
                     </div>
                   ))}
