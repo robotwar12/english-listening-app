@@ -54,6 +54,7 @@ const EnglishListeningApp: React.FC = () => {
   const [playlist, setPlaylist] = useState<AudioFile[]>([]);
   const [currentTrack, setCurrentTrack] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [isExamMode, setIsExamMode] = useState(false);
   const [showMeanings, setShowMeanings] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -291,6 +292,22 @@ const EnglishListeningApp: React.FC = () => {
                 </div>
               </div>
 
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <label className="flex cursor-pointer items-center gap-3 font-medium text-blue-900">
+                  <input
+                    type="checkbox"
+                    checked={isExamMode}
+                    onChange={(event) => setIsExamMode(event.target.checked)}
+                    aria-describedby="exam-mode-description"
+                    className="h-5 w-5 accent-blue-600"
+                  />
+                  시험 모드 (단어·뜻 숨기기)
+                </label>
+                <p id="exam-mode-description" className="mt-2 text-sm text-blue-700">
+                  소리만 듣고 답을 적어보세요. 시험 모드를 끄면 정답을 확인할 수 있습니다.
+                </p>
+              </div>
+
               <div className="text-xs text-gray-500">
                 <p>오디오 파일: {availableFiles.length}개 로드됨</p>
                 <p>뜻 데이터: {wordCount}개 로드됨</p>
@@ -303,31 +320,42 @@ const EnglishListeningApp: React.FC = () => {
                     <p className="mb-3 text-sm font-medium text-blue-600">
                       {currentTrack + 1} / {playlist.length}
                     </p>
-                    <div className="mb-2 flex items-center justify-center gap-2">
-                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-                        VOCA 3200
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        #{currentFile.index}
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-3xl font-bold text-blue-800">
-                        {currentFile.word}
-                      </p>
-                      {showMeanings && (
-                        <p className="text-xl text-gray-600">
-                          {currentFile.meaning}
+                    {isExamMode ? (
+                      <div className="space-y-2" aria-live="polite">
+                        <p className="text-3xl font-bold text-blue-800">
+                          문제 {currentTrack + 1}
                         </p>
-                      )}
-                    </div>
-                    <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500">
-                      <Volume2 size={16} />
-                      <span>{currentFile.filename}</span>
-                    </div>
-                    <div className="mt-1 text-xs text-gray-400">
-                      {currentFile.filePath}
-                    </div>
+                        <p className="text-gray-600">재생 버튼을 눌러 단어를 들어보세요.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="mb-2 flex items-center justify-center gap-2">
+                          <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                            VOCA 3200
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            #{currentFile.index}
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-3xl font-bold text-blue-800">
+                            {currentFile.word}
+                          </p>
+                          {showMeanings && (
+                            <p className="text-xl text-gray-600">
+                              {currentFile.meaning}
+                            </p>
+                          )}
+                        </div>
+                        <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500">
+                          <Volume2 size={16} />
+                          <span>{currentFile.filename}</span>
+                        </div>
+                        <div className="mt-1 text-xs text-gray-400">
+                          {currentFile.filePath}
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <audio
@@ -342,6 +370,7 @@ const EnglishListeningApp: React.FC = () => {
                   <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                     <Button
                       onClick={togglePlay}
+                      aria-label={isPlaying ? "일시정지" : "재생"}
                       size="lg"
                       className={`h-16 w-full rounded-full shadow-lg transition-transform hover:scale-105 sm:w-16 ${
                         isPlaying ? "bg-purple-600" : "bg-blue-600"
@@ -351,6 +380,7 @@ const EnglishListeningApp: React.FC = () => {
                     </Button>
                     <Button
                       onClick={nextTrack}
+                      aria-label="다음 문제"
                       size="lg"
                       className="h-16 w-full rounded-full bg-blue-600 shadow-lg transition-transform hover:scale-105 sm:w-16"
                       disabled={currentTrack >= playlist.length - 1}
@@ -359,6 +389,7 @@ const EnglishListeningApp: React.FC = () => {
                     </Button>
                     <Button
                       onClick={resetApp}
+                      aria-label="초기화"
                       size="lg"
                       className="h-16 w-full rounded-full shadow-lg transition-transform hover:scale-105 sm:w-16"
                       variant="outline"
@@ -378,10 +409,11 @@ const EnglishListeningApp: React.FC = () => {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-semibold text-gray-800">
-                    학습 단어 목록
+                    {isExamMode ? "시험 문제 목록" : "학습 단어 목록"}
                   </h3>
                   <div className="flex gap-2">
                     <Button
+                      aria-label={viewMode === "grid" ? "리스트로 보기" : "카드로 보기"}
                       onClick={() =>
                         setViewMode(viewMode === "grid" ? "list" : "grid")
                       }
@@ -392,6 +424,8 @@ const EnglishListeningApp: React.FC = () => {
                       {viewMode === "grid" ? <List size={16} /> : <Grid size={16} />}
                     </Button>
                     <Button
+                      disabled={isExamMode}
+                      aria-label={showMeanings ? "뜻 숨기기" : "뜻 표시하기"}
                       onClick={() => setShowMeanings(!showMeanings)}
                       variant="outline"
                       size="sm"
@@ -423,7 +457,9 @@ const EnglishListeningApp: React.FC = () => {
                           : "border-gray-200 hover:border-blue-200 hover:shadow-sm"
                       }`}
                     >
-                      {viewMode === "grid" ? (
+                      {isExamMode ? (
+                        <p className="text-lg font-medium text-blue-800">문제 {index + 1}</p>
+                      ) : viewMode === "grid" ? (
                         <div>
                           <div className="mb-2 flex items-start justify-between">
                             <div className="flex flex-wrap items-center">

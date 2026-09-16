@@ -1,36 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# English Listening Practice
 
-## Getting Started
+영어 단어 음원을 무작위 순서로 듣고 한국어 뜻을 확인하는 웹 앱입니다. 현재 화면은 VOCA 3200 자료의 750개 음원을 사용합니다.
 
-First, run the development server:
+- 번호 범위 선택 및 무작위 학습 목록 생성
+- 단어별 수동 재생·일시정지·다음 곡 선택
+- 뜻 표시/숨김, 카드/리스트 전환
+- 시험 모드: 단어·뜻을 가리고 문제 번호만 보면서 듣기 연습
+- PWA 설치 관련 구성 포함. 현재 manifest 문법 오류가 있어 설치 동작은 별도 수정·검증이 필요합니다.
 
-```bash
+## 시작하기
+
+```sh
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+브라우저에서 `http://localhost:3000`을 엽니다. 의존성이 준비되어 있다면 `npm run dev`만 실행합니다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+기술 구성: Next.js 15, React 19, TypeScript, Tailwind CSS 3, shadcn/ui 기반 공통 컴포넌트, next-pwa. 정확한 의존성은 `package.json`과 `package-lock.json`을 기준으로 합니다.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 필요한 문서 찾기
 
-## Learn More
+- [AGENTS.md](AGENTS.md): Codex 작업 지침과 필요한 파일만 읽는 규칙
+- [기능별 코드 지도](docs/code-map.md): 수정 위치, 데이터 흐름, 현재 동작과 이전 데이터 구분
+- [개발·검증 안내](docs/development.md): 실행 명령, 수정 절차, 검증 시나리오, 확인된 기존 문제
 
-To learn more about Next.js, take a look at the following resources:
+기능 변경 시 코드 지도의 관련 항목부터 확인하고, 구조나 동작을 바꾸면 해당 문서도 함께 갱신합니다.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 혼자 듣기 시험 보기
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. 범위를 정하고 **시험 모드 (단어·뜻 숨기기)**를 켭니다.
+2. **랜덤 생성** 후 재생 버튼으로 듣고 답을 적습니다. 다음 버튼이나 목록에서 다른 문제를 선택합니다.
+3. 시험 모드를 끄면 정답을 확인할 수 있습니다. 기존에 뜻을 숨겼다면 뜻 표시 버튼도 켭니다.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+랜덤으로 다시 생성하거나 초기화해도 시험 모드는 유지됩니다. 새로고침하면 꺼집니다.
