@@ -14,7 +14,7 @@ for filename, first in sorted(small.items()):
     n = int(filename.split('_')[0])
     next_row = by_number.get(n+1)
     status = 'match' if first['status']=='match' else 'review'
-    if second and second['status']=='match': status = 'match_second_model'
+    if status == 'review' and second and second['status']=='match': status = 'match_second_model'
     if second and next_row and norm(second['transcript'])==norm(next_row['word']) and status=='review':
         status='possible_shift'
     combined.append({'filename':filename,'word':first['word'],'meaning':first['meaning'],
@@ -30,7 +30,7 @@ for r in review:
 content+='</table></html>'
 (out/'review.html').write_text(content)
 counts={s:sum(r['status']==s for r in combined) for s in sorted({r['status'] for r in combined})}
-lines=['# 음원 대조 결과','', '현재 사용하는 audio3 음원을 로컬 Whisper small.en으로 검사하고, 후보를 medium.en으로 재검사한 캐시를 종합했다. 한국어 뜻은 파일명의 단어 키로 조회했다. 음원 수정과 재검사 이력은 audio-repair.md를 참고한다.','', '## 요약','',f'- 1차 일치 {counts.get("match",0)}개, 2차 모델에서 일치 {counts.get("match_second_model",0)}개.',f'- 다음 번호 단어로 인식되는 후보 {counts.get("possible_shift",0)}개, 기타 재확인 {counts.get("review",0)}개.','- 검사 스크립트는 음원을 수정하지 않는다. 301~319번 음원은 별도 교정 후 재검사했다.','- 음성 인식 판정이며 실제 청취 확정이나 한국어 뜻 전체의 사전 검증은 아니다.','', '## 파일명이 한 칸 밀린 것으로 의심되는 구간','', '아래는 현재 캐시에서 다음 번호 단어로 인식된 파일이다. 301~319번은 교정 후 재검사했다. 626~629번은 아직 교정하지 않았다.','', '| 파일명 단어 | 화면 뜻 | 1차 인식 | 2차 인식 | 2차 단어에 해당하는 뜻 |','|---|---|---|---|---|']
+lines=['# 음원 대조 결과','', '현재 사용하는 audio3 음원을 로컬 Whisper small.en으로 검사하고, 후보를 medium.en으로 재검사한 캐시를 종합했다. 한국어 뜻은 파일명의 단어 키로 조회했다. 음원 수정과 재검사 이력은 audio-repair.md를 참고한다.','', '## 요약','',f'- 1차 일치 {counts.get("match",0)}개, 2차 모델에서 일치 {counts.get("match_second_model",0)}개.',f'- 다음 번호 단어로 인식되는 후보 {counts.get("possible_shift",0)}개, 기타 재확인 {counts.get("review",0)}개.','- 검사 스크립트는 음원을 수정하지 않는다. 301~319번 및 626~629번 음원은 별도 교정 후 재검사했다.','- 음성 인식 판정이며 실제 청취 확정이나 한국어 뜻 전체의 사전 검증은 아니다.','', '## 파일명이 한 칸 밀린 것으로 의심되는 구간','', '아래는 현재 캐시에서 다음 번호 단어로 인식된 파일이다. 301~319번 및 626~629번은 교정 후 재검사했다.','', '| 파일명 단어 | 화면 뜻 | 1차 인식 | 2차 인식 | 2차 단어에 해당하는 뜻 |','|---|---|---|---|---|']
 for r in combined:
     if r['status']=='possible_shift': lines.append('| '+' | '.join(r[k].replace('|','/') for k in ['filename','meaning','small_transcript','medium_transcript','candidate_meaning'])+' |')
 lines+=['','## 기타 재확인 후보','','동음이의어와 철자 선택 오류가 포함되어 있으므로 아래 항목은 자동 수정하지 않는다. 예: hall/haul, pair/pear, weight/wait, male/mail.','','| 파일 | 화면 뜻 | 1차 인식 | 2차 인식 |','|---|---|---|---|']
