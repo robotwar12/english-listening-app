@@ -21,6 +21,7 @@
 | 공통 스타일·글꼴 | `src/app/globals.css`, `src/app/layout.tsx`, `tailwind.config.ts` | CSS 변수, Inter/Poppins, Tailwind 테마 |
 | 공통 UI | `src/components/ui/button.tsx`, `input.tsx`, `card.tsx` (같은 디렉터리) | `buttonVariants`, 각 컴포넌트 |
 | 클래스 병합 | `src/lib/utils.ts` | `cn` |
+| 로컬 음원 인식 대조 | `scripts/audit_audio.py`, `docs/audio-audit.md` | 파일명 단어·뜻·Whisper 결과 비교; 결과는 Git 제외 |
 | 명령·의존성·검사 설정 | `package.json`, `eslint.config.mjs`, `tsconfig.json` | npm scripts, strict, `@/*` → `src/*` |
 
 ## 현재 데이터 흐름
@@ -33,6 +34,8 @@
 6. 학습 상태는 React state에만 보관한다. 현재 소스에는 로그인, 외부 DB, 학습 기록 저장 기능이 없다.
 
 ## 데이터 계약과 사용 여부
+
+301~319번 음원 내용 교정과 재검사 결과는 [음원 교정 기록](audio-repair.md)을 참고한다. 단어·뜻·번호·파일명은 유지했다.
 
 | 경로 | 확인한 내용 | 현재 홈 사용 |
 |---|---|---|
